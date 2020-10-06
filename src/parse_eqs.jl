@@ -8,7 +8,7 @@ using Espresso: subs, simplify, ExGraph, ExH, to_expr, sanitize, genname,
 # Define some constants to create the new (parsed) functions
 # The (irrelevant) `nothing` below is there to have a :block Expr; deleted later
 const _HEAD_PARSEDFN_SCALAR = sanitize(:(
-function jetcoeffs!(::Val{__fn}, __tT::Taylor1{_T}, __x::Taylor1{_S}, __params) where
+function TaylorIntegration.jetcoeffs!(::Val{__fn}, __tT::Taylor1{_T}, __x::Taylor1{_S}, __params) where
         {_T<:Real, _S<:Number}
 
     order = __tT.order
@@ -17,7 +17,7 @@ end)
 );
 
 const _HEAD_PARSEDFN_VECTOR = sanitize(:(
-function jetcoeffs!( ::Val{__fn}, __tT::Taylor1{_T}, __x::AbstractVector{Taylor1{_S}},
+function TaylorIntegration.jetcoeffs!( ::Val{__fn}, __tT::Taylor1{_T}, __x::AbstractVector{Taylor1{_S}},
         __dx::AbstractVector{Taylor1{_S}}, __params) where {_T<:Real, _S<:Number}
 
     order = __tT.order
@@ -198,10 +198,6 @@ function _newhead(fn, fnargs)
         throw(ArgumentError(
         "Wrong number of arguments in the definition of the function $fn"))
     end
-
-    # Add `TaylorIntegration` (module name) to create a new method of `jetcoeffs!`
-    newfunction.args[1].args[1].args[1] =
-        Expr(:., :TaylorIntegration, :(:jetcoeffs!))
 
     # Delete the irrelevant `nothing`
     pop!(newfunction.args[2].args)
@@ -867,9 +863,8 @@ See the [documentation](@ref taylorize) for more details and limitations.
 
 """
 macro taylorize( ex )
-    nex = _make_parsed_jetcoeffs(ex)
-    quote
-        $(esc(ex))  # evals to calling scope the passed function
-        $(esc(nex)) # evals the new method of `TaylorIntegration.jetcoeffs!`
-    end
+    local nex = _make_parsed_jetcoeffs(ex)
+    #ex: the passed function
+    #nex: the new `TaylorIntegration.jetcoeffs!` method
+    return Expr(:block, esc(ex), esc(nex))
 end
